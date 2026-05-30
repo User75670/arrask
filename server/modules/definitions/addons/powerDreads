@@ -1,0 +1,976 @@
+const { combineStats, addAura, makeAuto, weaponArray, dereference } = require("../facilitators.js"),
+            { smshskl, base, basePolygonDamage, basePolygonHealth  } = require("../constants.js")
+const ensureIsClass = (Class, str) => {
+const g = require("../gunvals.js")
+
+
+
+Class.void = (() => {
+
+    Class.warningSign = {
+        SHAPE: "/warn.png",
+        INDEPENDENT: true,
+        CONTROLLERS: [["spin", {speed: 0}]]
+    }
+
+    Class.voidGun = {
+        PARENT: "autoTankGun",
+        LABEL: "Void Gun",
+        COLOR: "#222222",
+        BORDERLESS: true,
+        GUNS: ((_ = []) => {
+            _.push({
+                POSITION: [26, 15, 1, 0, 0, 0, 0],
+                PROPERTIES: {
+                    SHOOT_SETTINGS: combineStats([g.basic, g.power, g.pounder, { reload: 1.3 }]),
+                    TYPE: ["bullet", {
+                        ON: [{
+                            event: "death",
+                            handler: ({ body }) => {
+                                for (let i = 0, n = 4; i < n; i++) {
+                                    let angle = ((360/n)*i)*(Math.PI/180)
+                                    let o = new Entity({
+                                        x: body.x,
+                                        y: body.y
+                                    })
+                                    o.define("pentagon")
+                                    o.define({
+                                        COLOR: "#000000",
+                                        ALPHA: 0.2,
+                                        GLOW: {
+                                            RADIUS: 30,
+                                            COLOR: "#000000",
+                                            ALPHA: 1,
+                                            RECURSION: 2
+                                        },
+                                        BORDERLESS: true
+                                    })
+                                    o.team = body.team
+                                    o.velocity.x += 20 * Math.cos(angle)
+                                    o.velocity.y += 20 * Math.sin(angle)
+                                }
+                            }
+                        }]
+                    }]
+                }
+            })
+            for (let i = 0; i < 5; i++) {
+                _.push({
+                    POSITION: [1.5, 16, 1, 26 - (i*3.5), 0, 0, 0],
+                    PROPERTIES: {
+                        COLOR: ["#555555", "#444444", "#333333", "#222222", "#111111"][i]
+                    }
+                })
+            }
+            return _
+        })()
+    }
+
+    Class.voidedBullet = {
+        PARENT: "bullet",
+        LABEL: "Voided Bullet",
+        COLOR: "#222222",
+        BORDERLESS: true,
+        GLOW: {
+            RADIUS: 50,
+            COLOR: "#000000",
+            ALPHA: 1,
+            RECURSION: 3
+        },
+    }
+
+    Class.voidMinigun = {
+        PARENT: "autoTankGun",
+        LABEL: "Void Minigun",
+        COLOR: "#222222",
+        GUNS: ((_=[])=> {
+            for (let i = 0; i < 4; i++) {
+                _.push({
+                    POSITION: [26 - (i*3), 9, 1, 0, 0, 0, [0, 0.25, 0.5, 0.75][i]],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.machineGun, g.minigun, {reload: 1.5}]),
+                        TYPE: "bullet"
+                    }
+                }, {
+                    POSITION: [25 - (i*3), 8, 1, 0, 0, 0, 0],
+                    PROPERTIES: {
+                        COLOR: "000000"
+                    }
+                })
+            }
+            return _
+        })()
+    }
+    Class.voidDestroyer = {
+        PARENT: "autoTankGun",
+        LABEL: "Void Minigun",
+        COLOR: "#222222",
+        GUNS: [
+            {
+                POSITION: [19, 14, 1, 0, 0, 0, 0],
+                PROPERTIES: {
+                    SHOOT_SETTINGS: combineStats([g.basic, g.pounder, g.destroyer]),
+                    TYPE: "bullet"
+                }
+            }, { POSITION: [18, 13, 1, 0, 0, 0, 0], PROPERTIES: { COLOR: "#000000" } }
+        ]
+    }
+
+    Class.voidMiniLayer = {
+        PARENT: "genericTank",
+        SKILLS: Array(10).fill(9),
+        LABEL: "Void Minigun Layer",
+        SHAPE: 10,
+        CONTROLLERS: [["spin", { speed: -0.015 }]],
+        TURRETS: ((_ = []) => {
+            for (let i = 0; i < 10; i++) {
+                _.push({
+                    POSITION: [4, 7.5, 0, i*(360/10), 110, 1],
+                    TYPE: "voidMinigun"
+                }, {
+                    POSITION: [7, 8, 0, i*(360/10), 110, 0],
+                    TYPE: "voidDestroyer"
+                })
+            }
+            return _
+        })()
+    }
+
+    Class.voided = {
+        PARENT: "miniboss",
+        SHAPE: 6,
+        LABEL: "Voided",
+        NAME: "Void Soldier",
+        COLOR: "#000000",
+        FACING_TYPE: [["spin", { speed: 0.035 }]],
+        SKILL: Array(10).fill(9),
+        GLOW: {
+            RADIUS: 50,
+            COLOR: "#000000",
+            ALPHA: 1,
+            RECURSION: 4
+        },
+        SIZE: 50,
+        VALUE: 500e3,
+        BODY: {
+            HEALTH: base.HEALTH * 15,
+            DAMAGE: base.DAMAGE * 2,
+            SPEED: base.SPEED / 5
+        },
+        BORDERLESS: true,
+        TURRETS: ((_ = []) => {
+            for (let i = 0; i < 6; i++) {
+                _.push({
+                    POSITION: [9, 8, 0, i*(360/6), 180, 0],
+                    TYPE: "voidMinigun"
+                })
+            }
+            _.push({
+                POSITION: [13, 0, 0, 0, 360, 1],
+                TYPE: "voidDestroyer"
+            })
+            return _
+        })()
+    }
+
+    return {
+        PARENT: "genericTank",
+        LABEL: "Void",
+        SIZE: 175,
+        COLOR: "#000000",
+        GLOW: {
+            RADIUS: 350,
+            COLOR: "#000000",
+            ALPHA: 1,
+            RECURSION: 2
+        },
+        SKILL_CAP: Array(10).fill(smshskl),
+        EXTRA_SKILL: 40,
+        BORDERLESS: true,
+        SHAPE: 12,
+        FACING_TYPE: ["spin", {speed: 0.015}],
+        ON: [{
+            event: "death",
+            handler: ({ body }) => {
+                sockets.broadcast("The Void left some mini soldiers...")
+                for (let i = 0; i < 6; i++) {
+                    let o = new Entity({
+                        x: body.x,
+                        y: body.y
+                    })
+                    o.team = body.team
+                    o.define("voided")
+                }
+            }
+        }],
+        NAME: "Void the Ascended Dreadnought",
+        BODY: {
+            HEALTH: base.HEALTH * 68.5,
+            DAMAGE: base.DAMAGE * 5.44,
+            SHEILD: base.SHIELD * 1.825,
+            SPEED: base.SPEED / 5.6
+        },
+        TURRETS: ((_ = [])=> {
+            _.push({
+                POSITION: [13, 0, 0, 0, 360, 1],
+                TYPE: "voidMiniLayer"
+            },{
+                POSITION: [10, 0, 0, 0, 360, 1],
+                TYPE: "voidGun"
+            },{
+                POSITION: [12, 0, 0, 0, 360, 1],
+                TYPE: "warningSign"
+            })
+            return _
+        })(),
+        GUNS: ((_ = []) => {
+            for (let i = 0; i < 6; i++) {
+                _.push({
+                    POSITION: [13, 5, 1, 0, 0, i*(360/6), 0],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.pounder, g.destroyer]),
+                        TYPE: "bullet"
+                    }
+                }, {
+                    POSITION: [12, 4, 1, 0, 0, i*(360/6), 0],
+                    PROPERTIES: {
+                        COLOR: "#000000"
+                    }
+                })
+            }
+            for (let i = 0; i < 3; i++) {
+                for (let k = 0.5; k < 6; k++) {
+                    _.push({
+                        POSITION: [[12, 12, 13][i], 2.5, 1, 0, [-1.25, 1.25, 0][i], k*(360/6), [0.5,0.5,0][i]],
+                        PROPERTIES: {
+                            SHOOT_SETTINGS: combineStats([g.basic, g.twin, g.triplet, g.spam]),
+                            TYPE: "bullet"
+                        }
+                    }, {
+                        POSITION: [[11, 11, 12][i], 2, 1, 0, [-1.25, 1.25, 0][i], k*(360/6), 0],
+                        PROPERTIES: {
+                            COLOR: "#000000"
+                        }
+                    })
+                }
+            }
+            return _
+        })()
+    }
+})()
+
+Class.galaxy = (() => {
+    Class.blackHole2 = {
+        PARENT: ["bullet"],
+        LABEL: "BLACK HOLE",
+        SHAPE: "/blackHole.png",
+        FACING_TYPE: ["spin", {speed: -0.6}],
+    }
+    Class.blackHoleLauncher2 = {
+        PARENT: ["autoTankGun"],
+        LABEL: "Black Hole Launcher",
+        GUNS: ((_ = []) => {
+            _.push({
+                POSITION: [28, 18, 1, 0, 0, 0, 0],
+                PROPERTIES: {
+                    SHOOT_SETTINGS: combineStats([g.basic, g.pounder, g.sniper, g.sniper, g.assassin]),
+                    TYPE: "blackHole2"
+                }
+            })
+            for (let i = 0; i < 4; i++) {
+                _.push({
+                    POSITION: [2, 21, 1, 25 - (i*3.5), 0, 0, 0],
+                    PROPERTIES: {
+                        COLOR: "#222222"
+                    }
+                })
+            }
+            return _
+        })()
+    }
+    Class.spikedBullet = {
+        PARENT: ["bullet"],
+        SHAPE: 3,
+        FACING_TYPE: ["spin", {speed: 0.3}],
+        BODY: {
+            HEALTH: 0.2,
+            DAMAGE: 1.75
+        },
+        TURRETS: [
+            {
+                POSITION: [20, 0, 0, 0, 360, 0],
+                TYPE: ["triangle", {COLOR: "mirror", CONTROLLERS: [["spin", { speed: -0.3 }]]}]
+            }
+        ]
+    }
+    Class.galacticTurret = {
+        PARENT: ["autoTankGun"],
+        LABEL: "Galactic Turret",
+        COLOR: "#252525",
+        GUNS: ((_ = []) => {
+            _.push({
+                POSITION: [22, 12, 1, 0, 0, 0, 0],
+                PROPERTIES: {
+                    SHOOT_SETTINGS: combineStats([g.basic, g.sniper, g.assassin]),
+                    TYPE: "spikedBullet"
+                }
+            })
+            for (let i = 0; i < 3; i++) {
+                _.push({
+                    POSITION: [1.25, 13, 1, 21 - (i*3.25), 0, 0, 0],
+                    PROPERTIES: {
+                        COLOR: ["#555555", "#353535", "#222222"][i]
+                    }
+                })
+            }
+            return _
+        })()
+    }
+    Class.galacticTurretBody = {
+        PARENT: ["genericTank"],
+        COLOR: "mirror",
+        SHAPE: 10,
+        SKILL: Array(10).fill(9),
+        TURRETS: ((_ = []) => {
+            for (let i = 0; i < 10; i++) {
+                _.push({
+                    POSITION: [7.6, 8, 0, i*(360/10), 110, 0],
+                    TYPE: "galacticTurret"
+                })
+            }
+            return _
+        })()
+    }
+    Class.empireSoldier = {
+        PARENT: ["genericTank"],
+        LABEL: "Empire Soldier",
+        NAME: "Galaxy Defender",
+        COLOR: "#ffffff",
+        SIZE: 50,
+        SKILL: Array(10).fill(6),
+        GLOW: {
+            RADIUS: 30,
+            COLOR: "#ffffff",
+            ALPHA: 0.2,
+            RECURSION: 3
+        },
+        BODY: {
+            HEALTH: base.HEALTH * 15,
+            REGEN: base.REGEN * 0.02,
+            DAMAGE: base.DAMAGE * 3,
+            SHIELD: base.SHIELD * 1.41,
+            SPEED: base.SPEED / 2
+        },
+        SHAPE: 6,
+        GUNS: ((_ = []) => {
+            for (let i = 0; i < 3; i++) {
+                _.push({
+                    POSITION: [12, 4, 1.3, 0, 3, i*(360/3), 0.5],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.twin, g.triplet, g.spam]),
+                        TYPE: "bullet"
+                    }
+                },{
+                    POSITION: [12, 4, 1.3, 0, -3, i*(360/3), 0.5],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.twin, g.triplet, g.spam]),
+                        TYPE: "bullet"
+                    }
+                },{
+                    POSITION: [14, 4, 1.3, 0, 0, i*(360/3), 0],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.machineGun, g.twin, g.triplet, g.spam]),
+                        TYPE: "bullet"
+                    }
+                },
+            {
+                    POSITION: [16, 7, 1, 0, 0, (i+.5)*(360/3), 0],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.pounder, g.sniper]),
+                        TYPE: "bullet"
+                    }
+            })
+            }
+            return _
+        })()
+    }
+
+    return {
+        PARENT: ["genericTank"],
+        LABEL: "Galaxy",
+        NAME: "Galaxy the Ascended Dreadnought",
+        SHAPE: 12,
+        FACING_TYPE: ["spin", {speed: 0.02}],
+        SIZE: 150,
+        SKILL_CAP: Array(10).fill(smshskl),
+        EXTRA_SKILL: 40,
+        BODY: {
+            HEALTH: base.HEALTH * 60,
+            REGEN: base.REGEN * 0.02,
+            DAMAGE: base.DAMAGE * 4,
+            SHIELD: base.SHIELD * 1.77,
+            SPEED: base.SPEED / 5
+        },
+        COLOR: "#ffffff",
+        GLOW: {
+            RADIUS: 300,
+            COLOR: "#444444",
+            ALPHA: 0.3,
+            RECURSION: 4
+        },
+        ON: [{
+            event: "damage",
+            handler: ({body}) => {
+                // TODO, something special
+                let soldierSpawn = Math.random() < 0.05
+                let polyRain = Math.random() < 0.05
+                if (soldierSpawn) {
+                    sockets.broadcast("Go my soldier!")
+                    setTimeout(() => {
+                        let entity = new Entity({
+                            x: body.x,
+                            y: body.y,
+                        }, body)
+                        entity.define("bot")
+                        entity.define("empireSoldier")
+                        entity.velocity.x = 10 * Math.cos(Math.random()*(Math.PI*2))
+                        entity.velocity.y = 10 * Math.sin(Math.random()*(Math.PI*2))
+                        entity.skill.score = 150e3
+                    }, 400)
+                }
+                if (polyRain) {
+                    sockets.broadcast("Polygon Blast!")
+                    setTimeout(() => {
+                        let polygons = ["square", "triangle", "pentagon", "hexagon"]
+                        for (let i = 0, n = 50; i < n; i++) {
+                            let entity = new Entity({
+                                x: body.x,
+                                y: body.y
+                            })
+                            let angle = ((360/n) * i) * (Math.PI / 180)
+                            entity.define(polygons[Math.floor(Math.random()*polygons.length)])
+                            let force = 120
+                            entity.velocity.x = force * Math.cos(angle)
+                            entity.velocity.y = force * Math.sin(angle)
+                            entity.team = body.team
+                        }
+                    }, 400)
+                }
+            }
+        }],
+        TURRETS: ((_ = []) => {
+            _.push({
+                POSITION: [12.5, 0, 0, 0, 360, 1],
+                TYPE: ["galacticTurretBody", { CONTROLLERS: [["spin", { speed: -0.015 }]] }]
+            },{
+                POSITION: [10, 0, 0, 0, 360, 1],
+                TYPE: "blackHoleLauncher2"
+            })
+            return _
+        })(),
+        GUNS: ((gs=[]) => {
+            // I'd do some shit here
+            // ... ... ... shit ... ... ...
+
+            for (let i = 0; i < 6; i++) {
+                gs.push({
+                    POSITION: [13, 4.5, 1, 0, 0, (360/6)*i, 0],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.pounder, g.sniper, g.assassin]),
+                        TYPE: "bullet"
+                    }
+                }, {
+                    POSITION: [12, 5, 1, 0, 0, (360/6)*i, 0],
+                    PROPERTIES: {
+                        COLOR: "#222222"
+                    }
+                })
+            }
+            for (let i = .5; i < 6; i++) {
+                gs.push({
+                    POSITION: [6, 4, 1.7, 8, 0, (360/6)*i, 0],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.machineGun, g.spam, g.sniper, g.assassin]),
+                        TYPE: "bullet"
+                    }
+                }, {
+                    POSITION: [13, 5, 1, 0, 0, (360/6)*i, 0],
+                    PROPERTIES: {
+                        COLOR: "#222222"
+                    }
+                }, {
+                    POSITION: [14.5, 5, 0.001, 0, 0, (360/6)*i, 0],
+                    PROPERTIES: {
+                        COLOR: "#222222"
+                    }
+                })
+            }
+            return gs
+        })()
+    }
+})()
+Class.laniakea = (() => {
+
+    Class.laniakeaHoming = {
+        PARENT: "swarm",
+        LABEL: "Homing",
+        GLOW: {
+            RADIUS: 80,
+            COLOR: "#dd9924",
+            ALPHA: 1,
+            RECURSION: 2
+        },
+        SHAPE: 3,
+        GUNS: [{
+                POSITION: [6, 9, 1.6, 5, 0, 180, 0],
+                PROPERTIES: {
+                    SHOOT_SETTINGS: combineStats([g.basic, g.machineGun, g.thruster]),
+                    TYPE: "bullet",
+                    AUTOFIRE: true
+                }
+        }]
+    }
+    Class.laniakeaHomingProp = {
+        PARENT: "autoTankGun",
+        INDEPENDENT: true,
+        LABEL: "Homing",
+        GLOW: {
+            RADIUS: 80,
+            COLOR: "#dd9924",
+            ALPHA: 1,
+            RECURSION: 2
+        },
+        COLOR: "#dd9924",
+        SHAPE: 3,
+        MIRROR_MASTER_ANGLE: true,
+        GUNS: [{
+                POSITION: [6, 9, 1.6, 5, 0, 180, 0],
+                PROPERTIES: {
+                    SHOOT_SETTINGS: combineStats([g.basic, g.machineGun, g.thruster]),
+                    TYPE: "bullet",
+                    AUTOFIRE: true
+                }
+        }]
+    }
+    Class.homingGroup = {
+        PATENT: "bullet",
+        FACING_TYPE: ["spin", { speed: 0.2 }],
+        GLOW: {
+            RADIUS: 120,
+            COLOR: "#dd9924",
+            ALPHA: 1,
+            RECURSION: 8
+        },
+        ON: [{
+            event: "death",
+            handler: ({ body }) => {
+                for (let i = 0; i < 6; i++) {
+                    let o = new Entity({
+                        x: body.x,
+                        y: body.y
+                    }, body.master)
+                    o.define("laniakeaHoming")
+                    o.skill = body.master.skill
+                    o.SIZE = 60
+                    o.color = body.master.color
+                }
+            }
+        }],
+        GUNS: [],
+        SHAPE: 1,
+        TURRETS: ((_=[])=>{
+            for (let i = 0; i < 6; i++) {
+                _.push({
+                    POSITION: [20, -18, 0, i*(360/6), 0, 1],
+                    TYPE: "laniakeaHomingProp"
+                })
+            }
+            return _
+        })()
+    }
+    Class.superCluster = {
+        PARENT: "autoTankGun",
+        LABEL: "Supercluster",
+        COLOR: "#cc7724",
+        CONTROLLERS: [["spin", { speed: 0.07 }]],
+        BORDERLESS: true,
+        GUNS: ((_=[])=>{
+            _.push({
+                POSITION: [14, 9, -2, 0, 0, 0, 0],
+                PROPERTIES: {
+                    SHOOT_SETTINGS: combineStats([g.trap, g.power, g.sniper, g.power, g.assassin]),
+                    TYPE: "homingGroup"
+                }
+            })
+            for (let i = 0; i < 6; i++) {
+                _.push({
+                    POSITION: [(14+6*3.4) - (i*3.4), 2, 1, 0, 0, 0, 0],
+                    PROPERTIES: {
+                        COLOR: [
+                            "#777777",
+                            "#666666",
+                            "#555555",
+                            "#444444",
+                            "#333333",
+                            "#222222"
+                        ][i],
+                        BORDERLESS: true,
+                    }
+                })
+            }
+            return _
+        })()
+    }
+    Class.laniakeaGalaxy = {
+        PARENT: "autoTankGun",
+        LABEL: "Galaxy Group",
+        SHAPE: 5.5,
+        COLOR: "mirror",
+        CONTROLLERS: [["spin", { speed: 0.04 }]],
+        GUNS: ((_=[]) => {
+            for (let i = 0; i < 5; i++) {
+                _.push({
+                    POSITION: [6, 7, 1.7, 6, 0, i*(360/5), 0],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.drone]),
+                        TYPE: "swarm",
+                        AUTOFIRE: true
+                    }
+                }, {
+                    POSITION: [5, 6, 1.7, 6, 0, i*(360/5), 0],
+                    PROPERTIES: {
+                        COLOR: "mirror",
+                        BORDERLESS: true
+                    }
+                })
+            }
+            return _
+        })()
+    }
+
+    Class.laniakeaPort = {
+        PARENT: "autoTankGun",
+        LABEL: "Port",
+        GUNS: [{
+            POSITION: [19, 4, 1, 0, -2, -20, 0.333],
+            PROPERTIES: {
+                SHOOT_SETTINGS: combineStats([g.basic, g.pounder, g.mortar]),
+                TYPE: "bullet"
+            }
+        },{
+            POSITION: [19, 4, 1, 0, 2, 20, 0.667],
+            PROPERTIES: {
+                SHOOT_SETTINGS: combineStats([g.basic, g.pounder, g.mortar]),
+                TYPE: "bullet"
+            }
+        },{
+            POSITION: [22, 14, 1, 0, 0, 0, 0],
+            PROPERTIES: {
+                COLOR: "#cc0000",
+                SHOOT_SETTINGS: combineStats([g.basic, g.pounder, g.power, { reload: 1.75 }]),
+                TYPE: "laniakeaHoming"
+            }
+        }]
+    }
+
+    Class.laniakeaHomingStation = {
+        PARENT: "autoTankGun",
+        LABEL: "Homing Station",
+        COLOR: "#dd9924",
+        INDEPENDENT: true,
+        BORDERLESS: true,
+        GUNS: ((_ = []) => {
+            _.push({
+                POSITION: [22, 15, 0.5, 0, 0, 0, 0],
+                PROPERTIES: {
+                    SHOOT_SETTINGS: combineStats([g.basic, g.pounder, g.power, { reload: 1.75 }]),
+                    TYPE: "laniakeaHoming"
+                }
+            })
+            for (let i = 0; i < 5; i++) {
+                _.push({
+                    POSITION: [21-(i*3), 17, 0.5, 0, 0, 0, 0],
+                    PROPERTIES: {
+                        COLOR: [
+                            "#dd9924",
+                            "#cc7724",
+                            "#995524",
+                            "#773324",
+                            "#551124"
+                        ][i],
+                        BORDERLESS: true
+                    }
+                })
+            }
+            return _
+        })()
+    }
+
+    Class.laniakeaStar = {
+        PARENT: "genericTank",
+        SHAPE: "M 0 -2 C 0 0 0 0 -2 0 C 0 0 0 0 0 2 C 0 0 0 0 2 0 C 0 0 0 0 0 -2",
+        COLOR: "#dd9924",
+        ALPHA: 0.2,
+        TURRETS: [{
+            POSITION: [7, 0, 0, 0, 360, 1],
+            TYPE: "laniakeaHomingStation"
+        }]
+    }
+
+    return {
+        PARENT: "genericTank",
+        LABEL: "Laniakea-Supercluster",
+        NAME: "Laniakea the Ascended Dreadnought",
+        SHAPE: 12,
+        BODY: {
+            HEALTH: base.HEALTH * 70,
+            SPEED: base.SPEED / 4,
+            DAMAGE: base.DAMAGE * 5,
+            SHEILD: base.SHIELD * 1.92
+        },
+        SKILL_CAP: Array(10).fill(smshskl),
+        FACING_TYPE: ["spin", {speed: - 0.01}],
+        SIZE: 180,
+        ON: [{
+            event: "damage",
+            handler: ({ body }) => {
+                let polygons = ["egg", "square", "triangle", "pentagon", "hexagon"]
+                let angle = Math.random() * (Math.PI * 2)
+                let force = 80
+                let o = new Entity({
+                    x: body.x,
+                    y: body.y
+                }, body)
+                o.define(polygons[Math.floor(Math.random()*polygons.length)])
+                o.team = body.team
+                o.velocity.x = force * Math.cos(angle)
+                o.velocity.y = force * Math.sin(angle)
+            }
+        }],
+        EXTRA_SKILL: 40,
+        COLOR: "#dd9924",
+        TURRETS: ((_ = []) => {
+            _.push({
+                POSITION: [13, 0, 0, 0, 360, 1],
+                TYPE: "superCluster"
+            })
+            for (let i = 0; i < 17; i++) {
+                _.push({
+                    POSITION: [3, 26 + Math.ceil(Math.random()*5), Math.ceil(Math.random()*3), i*(360/17), 360, 0],
+                    TYPE: ["laniakeaStar", {
+                        CONTROLLERS: [["spin", {speed: 0 + (0.03-(Math.random() * 0.06))}]]
+                    }]
+                })
+            }
+            for (let i = 0; i < 12; i++) {
+                _.push({
+                    POSITION: [4, 19.5, 0, i*(360/12), 360, 1],
+                    TYPE: ["laniakeaGalaxy", { BORDERLESS: true, }]
+                },{
+                    POSITION: [4, 12.5, 0, i*(360/12), 110, 1],
+                    TYPE: ["laniakeaPort", { COLOR: 'mirror', BORDERLESS: true, }]
+                })
+            }
+            return _
+        })(),
+        GLOW: {
+            RADIUS: 760,
+            COLOR: "#dd9924",
+            ALPHA: 1,
+            RECURSION: 7
+        },
+        BORDERLESS: true,
+        GUNS: ((_ = []) => {
+            for (let i = 0; i < 12; i++) {
+                _.push({
+                    POSITION: [22, 5.25, 1, 0, 0, i*(360/12), 0],
+                    PROPERTIES: {
+                        COLOR: "#cc7724",
+                    }
+                })
+            }
+            return _
+        })()
+    }
+})()
+
+Class.universal = (() => {
+
+    Class.minionAura = addAura(1.2, 2.2, 0.3, "#050268")
+    Class.universe = {
+        PARENT: "minion",
+        LABEL: "Universe",
+        SHAPE: 5.5,
+        INDEPENDENT: true,
+        COLOR: "mirror",
+        GUNS: ((_=[])=>{
+            for (let i = 0; i < 5; i++) {
+                for (let t = 0; t < 3; t++) {
+                    _.push({
+                        POSITION: [[13,13,15][t], 5, 1, 0, [4,-4,0][t], i*(360/5), [0.5,0.5,0][t]],
+                        PROPERTIES: {
+                            SHOOT_SETTINGS: combineStats([g.basic, g.twin, g.triplet]),
+                            TYPE: "bullet"
+                        }
+                    })
+                }
+            }
+            return _
+        })(),
+        GLOW: {
+            RADIUS: 350,
+            COLOR: "mirror",
+            ALPHA: 1,
+            RECURSION: 4
+        },
+        TURRETS: ((_=[])=>{
+            _.push({
+                POSITION: [7.5, 0, 0, 0, 0, 1],
+                TYPE: "minionAura"
+            })
+            for (let i = 0.5; i < 5; i++) {
+                _.push({
+                    POSITION: [3, 7.85, 0, i*(360/5), 0, 1],
+                    TYPE: "minionAura"
+                })
+            }
+            return _
+        })()
+    }
+
+    Class.system = {
+        PARENT: "autoTankGun",
+        LABEL: "System",
+        COLOR: "mirror",
+        GUNS: ((_=[]) => {
+            _.push({
+                POSITION: [28, 16, 1, 0, 0, 0, 0],
+                PROPERTIES: {
+                    SHOOT_SETTINGS: combineStats([g.basic, g.power, g.sniper, g.pounder]),
+                    TYPE: "bullet"
+                }
+            })
+            for (let i = 0; i < 4; i++) {
+                _.push({
+                    POSITION: [1.25, 17, 1, 27-(i*4), 0, 0, 0],
+                    PROPERTIES: {
+                        COLOR: ["#050268", "#040157", "#030046", "#020035"][i]
+                    }
+                })
+            }
+            return _
+        })()
+    }
+
+    Class.borealis = {
+        PARENT: "genericTank",
+        LABEL: "Borealis",
+        COLOR: "mirror",
+        CONTROLLERS: [["spin", {speed: -0.015}]],
+        SHAPE: 6,
+        GUNS: ((_=[]) => {
+            for (let i = 0; i < 6; i++) {
+                _.push({
+                    POSITION: [13, 4, 1, 0, -3, i*(360/6), 0],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.pounder, g.destroyer, g.power]),
+                        TYPE: "bullet"
+                    }
+                },{
+                    POSITION: [6, 4, 1.5, 5, 3, i*(360/6), 0],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.factory, { speed: 4 }]),
+                        TYPE: "universe",
+                        AUTOFIRE: true,
+                        MAX_CHILDREN: 2
+                    }
+                })
+            }
+            return _
+        })()
+    }
+
+    return {
+        PARENT: "genericTank",
+        SHAPE: 12,
+        FACING_TYPE: ["spin", {speed: 0.015}],
+        SIZE: 220,
+        BODY: {
+            HEALTH: base.HEALTH * 130,
+            DAMAGE: base.DAMAGE * 5.5,
+            SHIELD: base.SHIELD * 3.2,
+            SPEED: base.SPEED / 5,
+            REGEN: base.REGEN / 3.44
+        },
+        SKILL_CAP: Array(10).fill(smshskl),
+        EXTRA_SKILL: 40,
+        LABEL: "Universal",
+        NAME: "Universal the Ascended Dreadnought",
+        COLOR: "#050268",
+        GLOW: {
+            RADIUS: 350,
+            COLOR: "#050268",
+            ALPHA: 1,
+            RECURSION: 3
+        },
+        GUNS: ((_=[])=>{
+            for (let i = 0; i < 6; i++) {
+                _.push({
+                    POSITION: [18, 4, 1, 0, 0, i*(360/6), 0],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.minigun, g.machineGun]),
+                        TYPE: "bullet"
+                    }
+                },{
+                    POSITION: [16, 4, 1, 0, 0, i*(360/6), 0.333],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.minigun, g.machineGun]),
+                        TYPE: "bullet"
+                    }
+                },{
+                    POSITION: [14, 4, 1, 0, 0, i*(360/6), 0.667],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.minigun, g.machineGun]),
+                        TYPE: "bullet"
+                    }
+                },{
+                    POSITION: [14, 5.15, 1, 0, 0, (i+0.5)*(360/6), 0],
+                    PROPERTIES: {
+                        SHOOT_SETTINGS: combineStats([g.basic, g.pounder, g.power]),
+                        TYPE: "bullet"
+                    }
+                }, {
+                    POSITION: [20, 2, 1, 0, 0, i*(360/6), 0],
+                    PROPERTIES: {
+                        COLOR: "mirror"
+                    }
+                },{
+                    POSITION: [16, 2, 1, 0, 0, (i+.5)*(360/6), 0],
+                    PROPERTIES: {
+                        COLOR: "mirror"
+                    }
+                })
+            }
+            return _
+        })(),
+        TURRETS: ((_=[])=>{
+            _.push({
+                POSITION: [14, 0, 0, 0, 360, 1],
+                TYPE: "borealis"
+            }, {
+                POSITION: [12, 0, 0, 0, 360, 1],
+                TYPE: "system"
+            })
+
+            return _
+        })()
+    }
+})()
+  // I see, I'll just see what are the cause of it
+  // I know what the error is
+
+  // there is an error I can't fix, so if we don't remove it will keep doing errors, let me do something
+  // K, I have another source code that will name spectator v2 which has advanced features(I think you'll like it)
+  //I renamed it to remove .js so this is just a text file now, it works so let me see what is the problem
+Class.addons.UPGRADES_TIER_0.push("galaxy", "void", "laniakea", "universal")
+}

@@ -1,0 +1,10 @@
+
+.vscode/
+node_modules/
+package-lock.json
+b.txt
+.env
+Storage/
+.config/
+.data/
+groups/
